@@ -1,0 +1,9 @@
+//Extract all the localized string from the file path.
+// eg: "test".localized()
+
+egrep -oph -r "\"[^,^\".]*\".localized\(\)" ./* | sed 's/.localized()//g' | sort | uniq -c | awk '{ print $2}’>
+
+
+//Remove the duplicate row by keeping the latest column.
+
+cat testSort | sort -k1 -n | tail -r  | awk -F " " '!_[$1]++' | tail -r

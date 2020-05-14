@@ -1,0 +1,99 @@
+def JobURL=""
+def Jobstatus=""
+
+pipeline {
+    agent any
+
+    environment {
+        TOKEN = credentials('token-boeing')
+        BOEING_CRED = credentials('boeing-local-starling')
+        BUILD = "build"
+    }
+
+    stages {
+        stage('Run Webex') {
+
+            steps {
+                script {
+                  def jobBuild = build job: 'webex-notification', propagate: false
+
+                  def jobResult = jobBuild.getResult()
+                  Jobstatus = jobResult
+                  def number = jobBuild.getNumber()
+                  JobURL = jobBuild.getAbsoluteUrl()
+
+                  echo "Build of webex-notification returned result: ${jobResult}"
+                  echo "Build of webex-notification returned result: ${Jobstatus}"
+                  echo "Build of webex-notification returned number: ${number}"
+                  echo "Build of webex-notification returned URL: ${JobURL}"
+
+                  if (Jobstatus == 'SUCCESS') {
+                        error("testJob failed with result: ${Jobstatus}")
+                        exit 1
+                  }
+                }
+            }
+
+            post {
+                always {
+                     sh """
+                          #!/bin/bash
+                          set -ex
+                          echo "IN ALWAYS BLOCK"
+                          echo "** ALWAYS  ${BUILD_URL}"
+                    """
+                }
+
+               failure {
+
+                    sh """
+                          #!/bin/bash
+                          set -ex
+                          echo "Build of FINAL URL: ${JobURL}"
+                          echo "Build of FINAL STATS: ${Jobstatus}"
+                       """
+               }
+            }
+        }
+
+        stage('Run test') {
+            steps {
+                build job: 'webex-job'
+            }
+            post {
+
+                always {
+                    sh """
+                          #!/bin/bash
+                          set -ex
+                          echo "Run test - Always"
+                       """
+                }
+                failure {
+                     sh """
+                          #!/bin/bash
+                          set -ex
+                          echo " Run test -failure +++"
+                        """
+
+                }
+                success {
+                       sh """
+                          #!/bin/bash
+                          set -ex
+                          echo "+++ Run test -success +++"
+                        """
+                }
+            }
+    }
+    }
+
+    post {
+        always {
+
+            sh '''
+                echo "** finished..."
+              '''
+            }
+    }
+}
